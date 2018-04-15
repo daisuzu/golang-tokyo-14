@@ -1,0 +1,132 @@
+linterを作ってみよう
+golang.tokyo #14
+16 Apr 2018
+
+dice_zu(daisuzu)
+@dice_zu
+https://github.com/daisuzu
+https://daisuzu.hatenablog.com
+
+* なぜlinterを作るのか
+
+golintやgo vetなどはあるが、
+
+- 独自のコーディング規約を守れているかチェックしたい
+- 単体テストで気付きにくいようなバグを見つけたい
+
+といった場合、既存のツールだとカバーできないため
+
+
+* どうlinterを作るのか
+
+以下のパッケージを使って静的解析する
+
+- go/ast
+- go/parser
+- go/token
+- go/types
+- golang.org/x/tools/go
+- など
+
+
+* linterを作る時の悩みどころ
+
+
+* 1. コマンドライン引数
+
+- 各種フラグ
+
+特定のファイルを除外したり、必要ないルールを除外したり
+
+- 対象の指定方法
+
+それぞれastを取得する処理が異なる
+
+・ファイル: parser.ParseFile()
+・ディレクトリ: parser.ParseDir()
+・パッケージ: 直接astを取得することができない
+
+
+* 2. 結果出力
+
+- フォーマット
+
+ファイル名、行番号、桁番号、内容
+
+- exit codeの制御
+
+何か見つかったら _1_ 以上にしたい
+けどエラー扱いにしたくないケースもあるかも?
+
+
+* 3. テスト
+
+astが絡むテストは難しい
+
+- 単体テスト
+
+_ast.Node_ を渡して、返ってきた _error_ をチェックする?
+
+- 結合テスト
+
+_ファイル_ を渡して、 _stdout_ / _stderr_ をチェックする?
+
+
+* とても面倒！
+
+
+* そこでhonnef.co/go/tools/lint
+
+とても簡単にlinterを作ることができるライブラリ
+
+- 引数の処理をしてくれる
+- 検出した問題の管理をしてくれる
+- テスト機能がある
+
+※ _megacheck_ などで使われている
+
+.link https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck staticcheck
+.link https://github.com/dominikh/go-tools/tree/master/cmd/gosimple gosimple
+.link https://github.com/dominikh/go-tools/tree/master/cmd/unused unused
+
+
+* 使い方
+
+
+* main.goを作る
+
+.code main.go
+
+
+* lint.Checkerを実装する
+
+.code checker.go
+
+
+* lint.Funcを実装する
+
+.code check0001.go
+
+
+* テストを書く
+
+.code checker_test.go
+
+_testdata/_ 配下にテスト用のファイルを置いておく
+.code testdata/testdata.go
+
+
+* 具体例
+
+.link https://github.com/daisuzu/gsc github.com/daisuzu/gsc: Go Source Checker
+
+- スコープ外の _Context_ を使っている箇所を検出
+
+_datastore.RunInTransaction_ でTransaction Contextを使っていることをチェックするため
+
+    $ gsc -target-context="MyCtx"
+    ctxscope.go:39:27: passing outer scope context "c" to datastore.Get() (CtxScope)
+    ctxscope.go:42:27: passing outer scope context "c" to datastore.Put() (CtxScope)
+    ctxscope.go:60:17: passing outer scope context "ctx" to get() (CtxScope)
+    ctxscope.go:63:14: passing outer scope context "ctx" to put() (CtxScope)
+    ctxscope.go:89:20: passing outer scope context "c" to datastore.Delete() (CtxScope)
