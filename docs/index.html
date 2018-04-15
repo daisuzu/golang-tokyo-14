@@ -1,0 +1,510 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>linterを作ってみよう</title>
+    <meta charset='utf-8'>
+    <script>
+      var notesEnabled =  false ;
+    </script>
+    <script src='static/slides.js'></script>
+
+    
+
+    <script>
+      
+      if (window["location"] && window["location"]["hostname"] == "talks.golang.org") {
+        var _gaq = _gaq || [];
+        _gaq.push(["_setAccount", "UA-11222381-6"]);
+        _gaq.push(["b._setAccount", "UA-49880327-6"]);
+        window.trackPageview = function() {
+          _gaq.push(["_trackPageview", location.pathname+location.hash]);
+          _gaq.push(["b._trackPageview", location.pathname+location.hash]);
+        };
+        window.trackPageview();
+        window.trackEvent = function(category, action, opt_label, opt_value, opt_noninteraction) {
+          _gaq.push(["_trackEvent", category, action, opt_label, opt_value, opt_noninteraction]);
+          _gaq.push(["b._trackEvent", category, action, opt_label, opt_value, opt_noninteraction]);
+        };
+      }
+    </script>
+  </head>
+
+  <body style='display: none'>
+
+    <section class='slides layout-widescreen'>
+
+      <article>
+        <h1>linterを作ってみよう</h1>
+        <h3>golang.tokyo #14</h3>
+        <h3>16 April 2018</h3>
+        
+          <div class="presenter">
+            
+  
+  <p>
+    dice_zu(daisuzu)
+  </p>
+  
+
+          </div>
+        
+      </article>
+
+  
+  
+      <article >
+      
+        <h3>なぜlinterを作るのか</h3>
+        
+  
+  <p>
+    golintやgo vetなどはあるが、
+  </p>
+  
+
+  <ul>
+  
+    <li>独自のコーディング規約を守れているかチェックしたい</li>
+  
+    <li>単体テストで気付きにくいようなバグを見つけたい</li>
+  
+  </ul>
+
+  
+  <p>
+    といった場合、既存のツールだとカバーできないため
+  </p>
+  
+
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>どうlinterを作るのか</h3>
+        
+  
+  <p>
+    以下のパッケージを使って静的解析する
+  </p>
+  
+
+  <ul>
+  
+    <li>go/ast</li>
+  
+    <li>go/parser</li>
+  
+    <li>go/token</li>
+  
+    <li>go/types</li>
+  
+    <li>golang.org/x/tools/go</li>
+  
+    <li>など</li>
+  
+  </ul>
+
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h2>linterを作る時の悩みどころ</h2>
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>1. コマンドライン引数</h3>
+        
+  <ul>
+  
+    <li>各種フラグ</li>
+  
+  </ul>
+
+  
+  <p>
+    特定のファイルを除外したり、必要ないルールを除外したり
+  </p>
+  
+
+  <ul>
+  
+    <li>対象の指定方法</li>
+  
+  </ul>
+
+  
+  <p>
+    それぞれastを取得する処理が異なる
+  </p>
+  
+
+  
+  <p>
+    ・ファイル: parser.ParseFile()
+<br>
+
+    ・ディレクトリ: parser.ParseDir()
+<br>
+
+    ・パッケージ: 直接astを取得することができない
+  </p>
+  
+
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>2. 結果出力</h3>
+        
+  <ul>
+  
+    <li>フォーマット</li>
+  
+  </ul>
+
+  
+  <p>
+    ファイル名、行番号、桁番号、内容
+  </p>
+  
+
+  <ul>
+  
+    <li>exit codeの制御</li>
+  
+  </ul>
+
+  
+  <p>
+    何か見つかったら <i>1</i> 以上にしたい
+<br>
+
+    けどエラー扱いにしたくないケースもあるかも?
+  </p>
+  
+
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>3. テスト</h3>
+        
+  
+  <p>
+    astが絡むテストは難しい
+  </p>
+  
+
+  <ul>
+  
+    <li>単体テスト</li>
+  
+  </ul>
+
+  
+  <p>
+    <i>ast.Node</i> を渡して、返ってきた <i>error</i> をチェックする?
+  </p>
+  
+
+  <ul>
+  
+    <li>結合テスト</li>
+  
+  </ul>
+
+  
+  <p>
+    <i>ファイル</i> を渡して、 <i>stdout</i> / <i>stderr</i> をチェックする?
+  </p>
+  
+
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h2>とても面倒！</h2>
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>そこでhonnef.co/go/tools/lint</h3>
+        
+  
+  <p>
+    とても簡単にlinterを作ることができるライブラリ
+  </p>
+  
+
+  <ul>
+  
+    <li>引数の処理をしてくれる</li>
+  
+    <li>検出した問題の管理をしてくれる</li>
+  
+    <li>テスト機能がある</li>
+  
+  </ul>
+
+  
+  <p>
+    ※ <i>megacheck</i> などで使われている
+  </p>
+  
+<p class="link"><a href="https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck" target="_blank">staticcheck</a></p><p class="link"><a href="https://github.com/dominikh/go-tools/tree/master/cmd/gosimple" target="_blank">gosimple</a></p><p class="link"><a href="https://github.com/dominikh/go-tools/tree/master/cmd/unused" target="_blank">unused</a></p>
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h2>使い方</h2>
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>main.goを作る</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="1">package main</span>
+<span num="2"></span>
+<span num="3">import (</span>
+<span num="4">    &#34;os&#34;</span>
+<span num="5"></span>
+<span num="6">    &#34;honnef.co/go/tools/lint/lintutil&#34;</span>
+<span num="7">)</span>
+<span num="8"></span>
+<span num="9">func main() {</span>
+<span num="10">    fs := lintutil.FlagSet(&#34;mylint&#34;)</span>
+<span num="11">    fs.Parse(os.Args[1:])</span>
+<span num="12"></span>
+<span num="13">    confs := []lintutil.CheckerConfig{</span>
+<span num="14">        {Checker: NewChecker(), ExitNonZero: true},</span>
+<span num="15">    }</span>
+<span num="16"></span>
+<span num="17">    lintutil.ProcessFlagSet(confs, fs)</span>
+<span num="18">}</span>
+</pre>
+
+
+</div>
+
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>lint.Checkerを実装する</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="3">import (</span>
+<span num="4">    &#34;honnef.co/go/tools/lint&#34;</span>
+<span num="5">)</span>
+<span num="6"></span>
+<span num="7">func NewChecker() lint.Checker {</span>
+<span num="8">    return &amp;checker{}</span>
+<span num="9">}</span>
+<span num="10"></span>
+<span num="11">type checker struct{}</span>
+<span num="12"></span>
+<span num="13">func (*checker) Name() string            { return &#34;mylint&#34; }</span>
+<span num="14">func (*checker) Prefix() string          { return &#34;ML&#34; }</span>
+<span num="15">func (*checker) Init(prog *lint.Program) {}</span>
+<span num="16"></span>
+<span num="17">func (c *checker) Funcs() map[string]lint.Func {</span>
+<span num="18">    return map[string]lint.Func{</span>
+<span num="19">        &#34;ML0001&#34;: c.Check0001,</span>
+<span num="20">    }</span>
+<span num="21">}</span>
+</pre>
+
+
+</div>
+
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>lint.Funcを実装する</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="3">import (</span>
+<span num="4">    &#34;go/ast&#34;</span>
+<span num="5"></span>
+<span num="6">    &#34;honnef.co/go/tools/lint&#34;</span>
+<span num="7">)</span>
+<span num="8"></span>
+<span num="9">func (*checker) Check0001(j *lint.Job) {</span>
+<span num="10">    fn := func(node ast.Node) bool {</span>
+<span num="11">        call, ok := node.(*ast.CallExpr)</span>
+<span num="12">        if !ok {</span>
+<span num="13">            return true</span>
+<span num="14">        }</span>
+<span num="15"></span>
+<span num="16">        j.Errorf(call, &#34;something is wrong&#34;)</span>
+<span num="17">        return true</span>
+<span num="18">    }</span>
+<span num="19">    for _, f := range j.Program.Files {</span>
+<span num="20">        ast.Inspect(f, fn)</span>
+<span num="21">    }</span>
+<span num="22">}</span>
+</pre>
+
+
+</div>
+
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>テストを書く</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="3">import (</span>
+<span num="4">    &#34;testing&#34;</span>
+<span num="5"></span>
+<span num="6">    &#34;honnef.co/go/tools/lint/testutil&#34;</span>
+<span num="7">)</span>
+<span num="8"></span>
+<span num="9">func TestAll(t *testing.T) {</span>
+<span num="10">    testutil.TestAll(t, NewChecker(), &#34;&#34;)</span>
+<span num="11">}</span>
+</pre>
+
+
+</div>
+
+  
+  <p>
+    <i>testdata/</i> 配下にテスト用のファイルを置いておく
+  </p>
+  
+
+  <div class="code" >
+
+
+<pre><span num="5">func Print() {</span>
+<span num="6">    fmt.Println(&#34;test&#34;) // MATCH &#34;something is wrong&#34;</span>
+<span num="7">}</span>
+</pre>
+
+
+</div>
+
+      
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>具体例</h3>
+        <p class="link"><a href="https://github.com/daisuzu/gsc" target="_blank">github.com/daisuzu/gsc: Go Source Checker</a></p>
+  <ul>
+  
+    <li>スコープ外の <i>Context</i> を使っている箇所を検出</li>
+  
+  </ul>
+
+  
+  <p>
+    <i>datastore.RunInTransaction</i> でTransaction Contextを使っていることをチェックするため
+  </p>
+  
+
+  
+  <div class="code"><pre>$ gsc -target-context=&#34;MyCtx&#34;
+ctxscope.go:39:27: passing outer scope context &#34;c&#34; to datastore.Get() (CtxScope)
+ctxscope.go:42:27: passing outer scope context &#34;c&#34; to datastore.Put() (CtxScope)
+ctxscope.go:60:17: passing outer scope context &#34;ctx&#34; to get() (CtxScope)
+ctxscope.go:63:14: passing outer scope context &#34;ctx&#34; to put() (CtxScope)
+ctxscope.go:89:20: passing outer scope context &#34;c&#34; to datastore.Delete() (CtxScope)</pre></div>
+  
+
+      
+      </article>
+  
+  
+
+      <article>
+        <h3>Thank you</h3>
+        
+          <div class="presenter">
+            
+  
+  <p>
+    dice_zu(daisuzu)
+  </p>
+  
+<p class="link"><a href="http://twitter.com/dice_zu" target="_blank">@dice_zu</a></p><p class="link"><a href="https://github.com/daisuzu" target="_blank">https://github.com/daisuzu</a></p><p class="link"><a href="https://daisuzu.hatenablog.com" target="_blank">https://daisuzu.hatenablog.com</a></p>
+          </div>
+        
+      </article>
+
+    </section>
+
+    <div id="help">
+      Use the left and right arrow keys or click the left and right
+      edges of the page to navigate between slides.<br>
+      (Press 'H' or navigate to hide this message.)
+    </div>
+
+    
+    <script src='play.js'></script>
+    
+
+    <script>
+      (function() {
+        
+        if (window["location"] && window["location"]["hostname"] == "talks.golang.org") {
+          var ga = document.createElement("script"); ga.type = "text/javascript"; ga.async = true;
+          ga.src = ("https:" == document.location.protocol ? "https://ssl" : "http://www") + ".google-analytics.com/ga.js";
+          var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ga, s);
+        }
+      })();
+    </script>
+  </body>
+</html>
